@@ -1,0 +1,33 @@
+[config]
+skip_core_tasks = true
+
+# TASKS
+[tasks.build]
+command = "cargo"
+args = ["build"]
+
+[tasks.dev]
+run_task = { name = ["test", "run"] }
+watch = { watch = ["./src/"] }
+
+[tasks.doc]
+run_task = { name = ["doc-open", "doc-watch"] }
+
+
+# MICROTASKS
+[tasks.run]
+command = "cargo"
+args = ["run"]
+
+[tasks.test]
+command = "cargo"
+args = ["test"]
+
+[tasks.doc-open]
+command = "cargo"
+args = ["doc", "--open"]
+
+[tasks.doc-watch]
+command = "cargo"
+args = ["doc"]
+watch = { watch = ["./src"], postpone = true }
