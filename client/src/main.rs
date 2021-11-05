@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -11,8 +11,8 @@ mod input;
 mod output;
 
 fn main() {
+    // let (tx, rx) = mpsc::channel();
     let input_buffer = Arc::new(Mutex::new(vec![]));
-
     let host = cpal::default_host();
     let output = create_output_stream(&host, input_buffer.clone());
     let input = create_input_stream(&host, input_buffer.clone());

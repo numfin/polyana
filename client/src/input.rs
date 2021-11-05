@@ -1,16 +1,17 @@
 use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::{Host, Stream};
+use cpal::{Host, SampleFormat, SampleRate, Stream};
 
 pub fn create_input_stream(host: &Host, input_buffer: Arc<Mutex<Vec<f32>>>) -> Stream {
     let device = host.default_input_device().expect("No input device");
-    let config = device
+    let mut supported_configs = device
         .supported_input_configs()
-        .expect("No supported input")
-        .next()
-        .expect("No supported input config")
-        .with_max_sample_rate();
+        .expect("No supported input");
+    let config_range = supported_configs
+        .find(|c| c.channels() == 1 && c.sample_format() == SampleFormat::F32)
+        .expect("Supported config not found");
+    let config = config_range.with_max_sample_rate();
 
     device
         .build_input_stream(
