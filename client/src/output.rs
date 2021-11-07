@@ -1,10 +1,19 @@
 use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::{Device, Host, Stream, StreamConfig};
+use cpal::{Device, Host, SampleRate, Stream, StreamConfig};
 use ringbuf::Consumer;
+
+use crate::config::SAMPLE_RATE;
 
 pub fn get_output_setup(host: &Host) -> anyhow::Result<(Device, StreamConfig)> {
     let device = host.default_output_device().expect("No output device");
-    let config = device.default_output_config()?.into();
+    let config = device
+        .supported_output_configs()
+        .unwrap()
+        .next()
+        .unwrap()
+        .with_sample_rate(SampleRate(SAMPLE_RATE as u32))
+        .into();
+
     Ok((device, config))
 }
 

@@ -7,5 +7,6 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.45"
+audiopus = "0.3.0-rc.0"
 cpal = "0.13.4"
 ringbuf = "0.2.6"
