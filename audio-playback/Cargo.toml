@@ -1,12 +1,9 @@
 [package]
-name = "client"
+name = "audio-playback"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.45"
-audiopus = "0.3.0-rc.0"
-cpal = "0.13.4"
-ringbuf = "0.2.6"
+cpal = "0.13.5"
