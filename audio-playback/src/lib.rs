@@ -1,7 +1,6 @@
-use std::sync::mpsc::Receiver;
-
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Device, Sample, SampleFormat, Stream, StreamConfig, SupportedStreamConfig};
+use flume::Receiver;
 
 fn init_device() -> Option<Device> {
     let host = cpal::default_host();
@@ -31,10 +30,24 @@ impl<T: Sample + Send + 'static> AudioPlayback<T> {
             .build_output_stream(
                 &self.config,
                 move |output: &mut [T], _| {
+                    // self.rx
+                    //     .try_iter()
+                    //     .zip(output.chunks_mut(10000))
+                    //     .for_each(|(input, output)| {
+                    //         for (s, o) in output.iter_mut().zip(input) {
+                    //             *s = o
+                    //         }
+                    //     });
                     if let Ok(rx_sample) = self.rx.try_recv() {
-                        output.iter_mut().zip(rx_sample).for_each(|(s, o)| {
-                            *s = o;
-                        });
+                        let mut iter = rx_sample.iter();
+                        for o in output {
+                            if let Some(i) = iter.next() {
+                                *o = i.to_owned();
+                            }
+                        }
+                        // output.iter_mut().zip(rx_sample).for_each(|(s, o)| {
+                        //     *s = o;
+                        // });
                     }
                 },
                 |_| {},

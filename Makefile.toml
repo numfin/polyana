@@ -1,0 +1,8 @@
+[config]
+skip_core_tasks = true
+
+[tasks.loopback]
+workspace = false
+command = "cargo"
+args = ["run", "--bin", "audio-capture"]
+watch = { watch = ["audio-capture", "audio-playback"] }

@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use flume::Sender;
 
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Device, Sample, SampleFormat, Stream, StreamConfig, SupportedStreamConfig};
@@ -31,9 +31,11 @@ impl<T: Sample + Send + 'static> AudioCapture<T> {
             .build_input_stream(
                 &self.config,
                 move |data: &[T], _| {
+                    // data.chunks(10000).for_each(|chunk| {
                     if let Err(err) = self.tx.send(data.to_vec()) {
                         println!("{}", err);
                     };
+                    // });
                 },
                 |_| {
                     println!("err");
