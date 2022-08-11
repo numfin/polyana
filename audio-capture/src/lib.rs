@@ -1,72 +1,68 @@
+use common::{Msg, SampleSize};
 use flume::Sender;
 
 use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::{Device, Sample, SampleFormat, Stream, StreamConfig, SupportedStreamConfig};
+use cpal::{Device, Sample, SampleFormat, Stream, SupportedStreamConfig};
 
-fn init_device() -> Option<Device> {
-    let host = cpal::default_host();
-    host.default_input_device()
-}
-
-fn get_stream_config(device: &Device) -> Option<SupportedStreamConfig> {
-    let config_range = device.supported_input_configs();
-    if let Ok(mut configs) = config_range {
-        configs.next().map(|config| config.with_max_sample_rate())
-    } else {
-        None
-    }
-}
-
-pub struct AudioCapture<T: Sample> {
+pub struct AudioCapture {
     device: Device,
-    config: StreamConfig,
-    tx: Sender<Vec<T>>,
+    supported_config: SupportedStreamConfig,
 }
-impl<T: Sample + Send + 'static> AudioCapture<T> {
-    fn new(device: Device, config: StreamConfig, tx: Sender<Vec<T>>) -> Self {
-        Self { device, config, tx }
+impl AudioCapture {
+    pub fn new() -> Result<Self, String> {
+        let (supported_config, device) = AudioCapture::get_stream_config()?;
+        Ok(Self {
+            device,
+            supported_config,
+        })
     }
-    pub fn listen(self) -> Stream {
-        self.device
-            .build_input_stream(
-                &self.config,
-                move |data: &[T], _| {
-                    // data.chunks(10000).for_each(|chunk| {
-                    if let Err(err) = self.tx.send(data.to_vec()) {
-                        println!("{}", err);
-                    };
-                    // });
-                },
-                |_| {
-                    println!("err");
-                },
-            )
-            .expect("Unable to create input stream")
-    }
-}
-
-pub struct AudioCaptureBuilder {
-    device: Device,
-}
-impl AudioCaptureBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    fn get_device() -> Result<Device, String> {
+        let host = cpal::default_host();
+        host.default_input_device()
+            .ok_or_else(|| "No output device".into())
     }
 
-    pub fn init<T: Sample + Send + 'static>(self, tx: Sender<Vec<T>>) -> AudioCapture<T> {
-        let supported_config =
-            get_stream_config(&self.device).expect("No supported capture config");
-        match supported_config.sample_format() {
-            SampleFormat::I16 => AudioCapture::new(self.device, supported_config.config(), tx),
-            SampleFormat::U16 => AudioCapture::new(self.device, supported_config.config(), tx),
-            SampleFormat::F32 => AudioCapture::new(self.device, supported_config.config(), tx),
+    fn get_stream_config() -> Result<(SupportedStreamConfig, Device), String> {
+        let device = AudioCapture::get_device()?;
+        let config_range = device.supported_input_configs();
+        let config_range = config_range
+            .map_err(|_| "No config range".to_string())?
+            .next()
+            .ok_or_else(|| "No supported stream configs".to_string())?;
+        let supported_config = config_range.with_max_sample_rate();
+
+        Ok((supported_config, device))
+    }
+    pub fn listen(self, tx: Sender<Msg>) -> Result<Stream, String> {
+        match self.supported_config.sample_format() {
+            cpal::SampleFormat::I16 => self.listen_type::<i16>(tx),
+            cpal::SampleFormat::U16 => self.listen_type::<u16>(tx),
+            cpal::SampleFormat::F32 => self.listen_type::<f32>(tx),
         }
+        .map_err(|err| err.to_string())
     }
-}
-
-impl Default for AudioCaptureBuilder {
-    fn default() -> Self {
-        let device = init_device().expect("No capture device found");
-        Self { device }
+    fn listen_type<T: Sample + Send + Sync + 'static>(
+        self,
+        tx: Sender<Msg>,
+    ) -> Result<Stream, cpal::BuildStreamError> {
+        self.device.build_input_stream(
+            &self.supported_config.config(),
+            move |data: &[T], _| {
+                let input_samples = data
+                    .iter()
+                    .map(|sample| match self.supported_config.sample_format() {
+                        SampleFormat::I16 => SampleSize::I16(sample.to_i16()),
+                        SampleFormat::U16 => SampleSize::U16(sample.to_u16()),
+                        SampleFormat::F32 => SampleSize::F32(sample.to_f32()),
+                    })
+                    .collect();
+                if let Err(err) = tx.send(input_samples) {
+                    println!("{}", err);
+                };
+            },
+            |_| {
+                println!("err");
+            },
+        )
     }
 }

@@ -1,16 +1,17 @@
 use std::thread;
 use std::time::Duration;
 
-use audio_capture::AudioCaptureBuilder;
-use audio_playback::AudioPlaybackBuilder;
+use audio_capture::AudioCapture;
+use audio_playback::AudioPlayback;
+use common::Msg;
 use cpal::traits::StreamTrait;
 
-fn main() {
-    let (tx, rx) = flume::bounded(0);
+fn main() -> Result<(), String> {
+    let (tx, rx) = flume::bounded::<Msg>(0);
 
     // If variable not used - rx will be dropped
-    let _playback = AudioPlaybackBuilder::new().init(rx).play();
-    let capture = AudioCaptureBuilder::new().init::<i16>(tx).listen();
+    let _playback = AudioPlayback::new()?.play(rx);
+    let capture = AudioCapture::new()?.listen(tx)?;
     capture.play().unwrap();
 
     loop {
