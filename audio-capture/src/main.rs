@@ -9,8 +9,8 @@ use cpal::traits::StreamTrait;
 fn main() -> Result<(), String> {
     let (tx, rx) = flume::bounded::<Msg>(0);
 
-    // If variable not used - rx will be dropped
-    let _playback = AudioPlayback::new()?.play(rx);
+    // rx will be dropped without variable
+    let _playback = AudioPlayback::new()?.play(rx)?;
     let capture = AudioCapture::new()?.listen(tx)?;
     capture.play().unwrap();
 

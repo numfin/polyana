@@ -32,12 +32,13 @@ impl AudioPlayback {
 
         Ok((supported_config, device))
     }
-    pub fn play(self, rx: Receiver<Msg>) -> Result<Stream, cpal::BuildStreamError> {
+    pub fn play(self, rx: Receiver<Msg>) -> Result<Stream, String> {
         match self.supported_config.sample_format() {
             cpal::SampleFormat::I16 => self.play_type::<i16>(rx),
             cpal::SampleFormat::U16 => self.play_type::<u16>(rx),
             cpal::SampleFormat::F32 => self.play_type::<f32>(rx),
         }
+        .map_err(|err| err.to_string())
     }
     fn play_type<T: Sample + Send + Sync + 'static>(
         self,
