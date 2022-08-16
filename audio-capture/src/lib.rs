@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use common::{Msg, SampleSize};
 use flume::Sender;
 
@@ -33,21 +35,25 @@ impl AudioCapture {
 
         Ok((supported_config, device))
     }
-    pub fn listen(self, tx: Sender<Msg>) -> Result<Stream, String> {
+    pub fn listen(self, tx: Sender<Msg>, is_paused: Arc<Mutex<bool>>) -> Result<Stream, String> {
         match self.supported_config.sample_format() {
-            cpal::SampleFormat::I16 => self.listen_type::<i16>(tx),
-            cpal::SampleFormat::U16 => self.listen_type::<u16>(tx),
-            cpal::SampleFormat::F32 => self.listen_type::<f32>(tx),
+            SampleFormat::I16 => self.listen_type::<i16>(tx, is_paused),
+            SampleFormat::U16 => self.listen_type::<u16>(tx, is_paused),
+            SampleFormat::F32 => self.listen_type::<f32>(tx, is_paused),
         }
         .map_err(|err| err.to_string())
     }
     fn listen_type<T: Sample + Send + Sync + 'static>(
         self,
         tx: Sender<Msg>,
+        is_paused: Arc<Mutex<bool>>,
     ) -> Result<Stream, cpal::BuildStreamError> {
         self.device.build_input_stream(
             &self.supported_config.config(),
             move |data: &[T], _| {
+                if *is_paused.lock().unwrap() {
+                    return;
+                }
                 let input_samples = data
                     .iter()
                     .map(|sample| match self.supported_config.sample_format() {

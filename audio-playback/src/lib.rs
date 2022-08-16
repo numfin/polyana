@@ -48,12 +48,16 @@ impl AudioPlayback {
             &self.supported_config.config(),
             move |buffer: &mut [T], _| {
                 let samples = match rx.try_recv() {
-                    Ok(packets) => packets.into_iter().map(|p| match p {
+                    Ok(packets) => packets.into_iter().map::<T, _>(|p| match p {
                         SampleSize::I16(v) => Sample::from(&v),
                         SampleSize::U16(v) => Sample::from(&v),
                         SampleSize::F32(v) => Sample::from(&v),
                     }),
-                    _ => return,
+                    _ => {
+                        return buffer.iter_mut().for_each(|buf| {
+                            *buf = Sample::from(&0.0);
+                        });
+                    }
                 };
                 samples.zip(buffer.iter_mut()).for_each(|(sample, buf)| {
                     *buf = sample;
