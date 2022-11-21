@@ -8,5 +8,3 @@ edition = "2021"
 [dependencies]
 audio-playback = { version = "0.1.0", path = "../audio-playback" }
 common = { version = "0.1.0", path = "../common" }
-cpal = "0.13.5"
-flume = "0.10.14"

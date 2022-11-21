@@ -1,2 +1,4 @@
 [workspace]
-members = ["audio-capture", "audio-playback", "common", "server"]
+members = ["audio-capture", "audio-playback", "common", "server", "gui"]
+
+resolver = "2"

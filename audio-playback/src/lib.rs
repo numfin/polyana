@@ -1,14 +1,21 @@
-use common::{Msg, SampleSize};
+use common::{cpal, flume, Msg, SampleSize};
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Device, Sample, Stream, SupportedStreamConfig};
 use flume::Receiver;
+
+#[derive(Debug)]
+pub enum PlaybackError {
+    NoOutputDevice,
+    NoConfigRange,
+    NoSupportedStreamConfig,
+}
 
 pub struct AudioPlayback {
     device: Device,
     supported_config: SupportedStreamConfig,
 }
 impl AudioPlayback {
-    pub fn new() -> Result<Self, String> {
+    pub fn new() -> Result<Self, PlaybackError> {
         let (supported_config, device) = AudioPlayback::get_stream_config()?;
 
         Ok(Self {
@@ -16,18 +23,19 @@ impl AudioPlayback {
             supported_config,
         })
     }
-    fn get_device() -> Result<Device, String> {
+    fn get_device() -> Result<Device, PlaybackError> {
         let host = cpal::default_host();
         host.default_output_device()
-            .ok_or_else(|| "No output device".into())
+            .ok_or(PlaybackError::NoOutputDevice)
     }
-    fn get_stream_config() -> Result<(SupportedStreamConfig, Device), String> {
+    fn get_stream_config() -> Result<(SupportedStreamConfig, Device), PlaybackError> {
         let device = AudioPlayback::get_device()?;
-        let config_range = device.supported_output_configs();
+        let mut config_range = device
+            .supported_output_configs()
+            .map_err(|_| PlaybackError::NoConfigRange)?;
         let config_range = config_range
-            .map_err(|_| "No config range".to_string())?
             .next()
-            .ok_or_else(|| "No supported stream configs".to_string())?;
+            .ok_or(PlaybackError::NoSupportedStreamConfig)?;
         let supported_config = config_range.with_max_sample_rate();
 
         Ok((supported_config, device))

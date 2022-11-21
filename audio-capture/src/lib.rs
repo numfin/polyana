@@ -1,36 +1,43 @@
 use std::sync::{Arc, Mutex};
 
-use common::{Msg, SampleSize};
+use common::{cpal, flume, Msg, SampleSize};
 use flume::Sender;
 
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Device, Sample, SampleFormat, Stream, SupportedStreamConfig};
+
+#[derive(Debug)]
+pub enum CaptureError {
+    NoInputDevice,
+    NoConfigRange,
+    NoSupportedStreamConfigs,
+}
 
 pub struct AudioCapture {
     device: Device,
     supported_config: SupportedStreamConfig,
 }
 impl AudioCapture {
-    pub fn new() -> Result<Self, String> {
+    pub fn new() -> Result<Self, CaptureError> {
         let (supported_config, device) = AudioCapture::get_stream_config()?;
         Ok(Self {
             device,
             supported_config,
         })
     }
-    fn get_device() -> Result<Device, String> {
+    fn get_device() -> Result<Device, CaptureError> {
         let host = cpal::default_host();
         host.default_input_device()
-            .ok_or_else(|| "No output device".into())
+            .ok_or(CaptureError::NoInputDevice)
     }
 
-    fn get_stream_config() -> Result<(SupportedStreamConfig, Device), String> {
+    fn get_stream_config() -> Result<(SupportedStreamConfig, Device), CaptureError> {
         let device = AudioCapture::get_device()?;
         let config_range = device.supported_input_configs();
         let config_range = config_range
-            .map_err(|_| "No config range".to_string())?
+            .map_err(|_| CaptureError::NoConfigRange)?
             .next()
-            .ok_or_else(|| "No supported stream configs".to_string())?;
+            .ok_or(CaptureError::NoSupportedStreamConfigs)?;
         let supported_config = config_range.with_max_sample_rate();
 
         Ok((supported_config, device))
